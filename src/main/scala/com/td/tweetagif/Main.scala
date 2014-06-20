@@ -1,5 +1,6 @@
 
 import com.td.utils.{GoogleSearchAPI, TwitterAPI}
+import scala.io.Source
 import scalaj.http.Token
 
 
@@ -12,7 +13,11 @@ object Main {
     val twitterAPI = new TwitterAPI(consumer, accessToken)
     val googleSearchAPI = new GoogleSearchAPI()
 
-    var id = 430438879590481920L
+    var id = args.headOption match {
+      case Some(head) => head.toLong
+      case None => 479679841336569856L //Magic # to start from...
+    }
+
     while (true) {
       try {
         println(twitterAPI.getApplicationLimit)
@@ -33,13 +38,21 @@ object Main {
                       case "@tweetagif" => {
                         if (id < tweet._1) {
                           println("In Response to " + tweet._1)
-                          val status = googleSearchAPI.SearchImage(t.group(3)).collect {
-                            case s: String => t.group(2) + " @" + tweet._3 + " " + s
-                          }.filter { x => x.length < 140 }.head
 
-                          println(status)
-                          println(twitterAPI.Reply(tweet._1, status))
+                          val urls = googleSearchAPI.SearchImage(t.group(3))
+                          urls.headOption match {
+                            case Some(head) => {
+                              val status = t.group(2) + " @" + tweet._3
+                              println(twitterAPI.replyWithMedia(tweet._1, status, head))
+                            }
+                            case None => {
+                              println("No GIFs found...")
+                              twitterAPI.reply(tweet._1, "Sorry, no GIFs found...")
+                            }
+
+                          }
                           id = tweet._1 + 1;
+
                         }
                       }
                     }

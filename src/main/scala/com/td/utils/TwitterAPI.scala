@@ -5,6 +5,10 @@ import scala.util.parsing.json.{JSONArray, JSONObject}
 import scalaj.http._
 import scala.collection.immutable.HashMap
 import java.lang
+import twitter4j.{TwitterFactory, StatusUpdate}
+import java.net.{HttpURLConnection, URL}
+import twitter4j.conf.ConfigurationBuilder
+import twitter4j.auth.AccessToken
 
 class TwitterAPI(consumer: Token, accessToken: Token) {
 
@@ -166,7 +170,7 @@ class TwitterAPI(consumer: Token, accessToken: Token) {
    * @param status
    * @return
    */
-  def Tweet(status: String) = {
+  def tweet(status: String) = {
     Http.post("https://api.twitter.com/1.1/statuses/update.json")
       .param("status", status)
       .option(HttpOptions.connTimeout(5000))
@@ -180,12 +184,33 @@ class TwitterAPI(consumer: Token, accessToken: Token) {
    * @param status
    * @return
    */
-  def Reply(in_reply_to_status_id: Long, status: String) = {
+  def reply(in_reply_to_status_id: Long, status: String) = {
     Http.post("https://api.twitter.com/1.1/statuses/update.json")
       .param("status", status)
       .param("in_reply_to_status_id", in_reply_to_status_id.toString)
       .option(HttpOptions.connTimeout(5000))
       .option(HttpOptions.readTimeout(10000))
       .oauth(consumer, accessToken).asString
+  }
+
+  /**
+   * This is just a temporary stop-gap until I can figure out how to fix scalaj-http for multipart+oauth
+   */
+  def replyWithMedia(in_reply_to_status_id: Long, message: String, mediaURL: String) = {
+    val builder = new ConfigurationBuilder();
+    builder.setOAuthConsumerKey(consumer.key);
+    builder.setOAuthConsumerSecret(consumer.secret);
+    val twitter = new TwitterFactory(builder.build()).getInstance(new AccessToken(accessToken.key, accessToken.secret));
+
+    val status = new StatusUpdate(message);
+    val connection = new URL(mediaURL).openConnection().asInstanceOf[HttpURLConnection]
+    connection.setRequestMethod("GET")
+    val in = connection.getInputStream
+    status.setMedia("pic.gif", in)
+    status.setInReplyToStatusId(in_reply_to_status_id)
+    twitter.updateStatus(status)
+
+    in.close()
+    "Tweeted " + message + " With URL: " + mediaURL
   }
 }
