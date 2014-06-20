@@ -1,5 +1,6 @@
 
 import com.td.utils.{GoogleSearchAPI, TwitterAPI}
+import java.net.{HttpURLConnection, URL}
 import scala.io.Source
 import scalaj.http.Token
 
@@ -15,7 +16,7 @@ object Main {
 
     var id = args.headOption match {
       case Some(head) => head.toLong
-      case None => 479679841336569856L //Magic # to start from...
+      case None => 479814603560747010L //Magic # to start from...
     }
 
     while (true) {
@@ -39,7 +40,18 @@ object Main {
                         if (id < tweet._1) {
                           println("In Response to " + tweet._1)
 
-                          val urls = googleSearchAPI.SearchImage(t.group(3))
+                          val urls = googleSearchAPI.SearchImage(t.group(3)).find {
+                            mediaURL => {
+                              val connection = new URL(mediaURL).openConnection().asInstanceOf[HttpURLConnection]
+                              connection.setRequestMethod("GET")
+                              val is = connection.getInputStream
+                              val length = Stream.continually(is.read).takeWhile(-1 !=).map(_.toByte).toArray.length
+                              is.close()
+                              println(mediaURL + " " + length)
+                              length < 3000000
+                            }
+                          }
+
                           urls.headOption match {
                             case Some(head) => {
                               val status = t.group(2) + " @" + tweet._3
