@@ -48,7 +48,7 @@ object Main {
                               val length = Stream.continually(is.read).takeWhile(-1 !=).map(_.toByte).toArray.length
                               is.close()
                               println(mediaURL + " " + length)
-                              length < 3000000
+                              length < 5000000
                             }
                           }
 
